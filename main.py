@@ -394,7 +394,10 @@ def build_pool(comparables):
     for comp in comparables:
         try:
             ds = parse_ts(comp["day_start"])
-        except (KeyError, ValueError):
+        except (KeyError, TypeError, ValueError):
+            # A missing or non-string day_start (strptime raises TypeError
+            # on None) skips just this comparable; without the guard one
+            # malformed comparable would crash the run for every case.
             continue
         hourly = {}
         for row in comp.get("hourly") or []:
@@ -440,7 +443,9 @@ def forecast_case(case, name):
                 off = int(round(parse_ts(row["from"]) - ds))
                 hh[off] = float(row["viewers"])
         target_f = feats(hh, p1)
-    except (KeyError, ValueError):
+    except (KeyError, TypeError, ValueError):
+        # Same guard as in build_pool: a null/non-string timestamp falls
+        # back to the default features instead of crashing the case.
         target_f = {"p1": p1, "pre_max24": None, "v23": None, "v19": None,
                     "slope_in": None, "base7": None, "eve_mean": None}
     pool = build_pool(case.get("comparables") or [])
